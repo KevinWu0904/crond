@@ -35,6 +35,7 @@ var logLevelMapping = map[string]zapcore.Level{
 	"info":  zap.InfoLevel,
 	"warn":  zap.WarnLevel,
 	"error": zap.ErrorLevel,
+	"panic": zap.PanicLevel,
 	"fatal": zap.FatalLevel,
 }
 
@@ -110,6 +111,10 @@ func CtxError(ctx context.Context, template string, args ...interface{}) {
 	sugaredLog.With(GetAllKVs(ctx)...).Errorf(template, args...)
 }
 
+func CtxPanic(ctx context.Context, template string, args ...interface{}) {
+	sugaredLog.With(GetAllKVs(ctx)...).Panicf(template, args...)
+}
+
 func CtxFatal(ctx context.Context, template string, args ...interface{}) {
 	sugaredLog.With(GetAllKVs(ctx)...).Fatalf(template, args...)
 }
@@ -128,6 +133,10 @@ func Warn(template string, args ...interface{}) {
 
 func Error(template string, args ...interface{}) {
 	sugaredLog.Errorf(template, args...)
+}
+
+func Panic(template string, args ...interface{}) {
+	sugaredLog.Panicf(template, args...)
 }
 
 func Fatal(template string, args ...interface{}) {
