@@ -94,6 +94,9 @@ issues:
       linters:
         - gomnd
     - linters:
+        - gomnd
+      text: 'mnd: Magic number'
+    - linters:
         - golint
       text: 'should not use basic type string as key in context.WithValue'
     - linters:
