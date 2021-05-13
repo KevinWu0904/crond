@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 
-	"github.com/KevinWu0904/crond/internal/app/crond-api/handler"
 	"github.com/KevinWu0904/crond/pkg/flag"
 	"github.com/KevinWu0904/crond/pkg/logs"
 	"github.com/KevinWu0904/crond/pkg/term"
@@ -25,12 +24,14 @@ func (options *APIServerOptions) BindNamedFlagSets(nfs *flag.NamedFlagSets) {
 	options.LoggerOptions.BindFlags(nfs.NewFlatSet("log"))
 }
 
-func NewAPIServerCommand(options *APIServerOptions) *cobra.Command {
+func NewAPIServerCommand() *cobra.Command {
+	options := NewAPIServerOptions()
+
 	cmd := &cobra.Command{
 		Use:  "crond-api",
 		Long: "The CronD API Server provides REST service for jobs.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return StartAPIServer()
+			return RunAPIServer(options)
 		},
 	}
 
@@ -56,21 +57,18 @@ func NewAPIServerCommand(options *APIServerOptions) *cobra.Command {
 	return cmd
 }
 
-func StartAPIServer() error {
+func RunAPIServer(options *APIServerOptions) error {
+	logs.Init(options.LoggerOptions)
+	defer logs.Flush()
+
 	r := gin.New()
 
-	v1 := r.Group("/v1")
-	{
-		v1.GET("/jobs", handler.GetJobs)
-		v1.POST("/jobs", handler.CreateJob)
-		v1.PUT("/jobs/:job_id", handler.UpdateJob)
-		v1.DELETE("/jobs/:job_id", handler.DeleteJob)
-	}
+	RegisterAPIServer(r)
 
-	logs.Info("StartAPIServer ...")
+	logs.Info("RunAPIServer ...")
 
 	if err := r.Run(); err != nil {
-		logs.Error("StartAPIServer failed: err=%v", err)
+		logs.Error("RunAPIServer failed: err=%v", err)
 		return err
 	}
 
