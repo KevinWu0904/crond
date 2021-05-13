@@ -14,11 +14,14 @@ type NamedFlagSets struct {
 	FlagSets map[string]*pflag.FlagSet
 }
 
-func (nfs *NamedFlagSets) NewFlatSet(name string) *pflag.FlagSet {
-	if nfs.FlagSets == nil {
-		nfs.FlagSets = make(map[string]*pflag.FlagSet)
+func NewNamedFlagSets() *NamedFlagSets {
+	return &NamedFlagSets{
+		Order:    make([]string, 0),
+		FlagSets: make(map[string]*pflag.FlagSet),
 	}
+}
 
+func (nfs *NamedFlagSets) NewFlatSet(name string) *pflag.FlagSet {
 	if _, ok := nfs.FlagSets[name]; !ok {
 		nfs.Order = append(nfs.Order, name)
 		nfs.FlagSets[name] = pflag.NewFlagSet(name, pflag.ExitOnError)
@@ -27,7 +30,7 @@ func (nfs *NamedFlagSets) NewFlatSet(name string) *pflag.FlagSet {
 	return nfs.FlagSets[name]
 }
 
-func PrintSections(w io.Writer, nfs NamedFlagSets, cols int) {
+func PrintSections(w io.Writer, nfs *NamedFlagSets, cols int) {
 	for _, name := range nfs.Order {
 		fs := nfs.FlagSets[name]
 		if !fs.HasFlags() {
