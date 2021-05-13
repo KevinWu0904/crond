@@ -33,14 +33,18 @@ func NewLoggerOptions() *LoggerOptions {
 }
 
 func (o *LoggerOptions) BindFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&o.LogLevel, "log_level", "info", "CronD service log level")
-	fs.StringVar(&o.LogMode, "log_mode", "debug", "Log mode decides debug or production log")
-	fs.StringVar(&o.LogEncoder, "log_encoder", "console", "Log encoder decides json encoder or console encoder")
-	fs.BoolVar(&o.EnableConsoleLog, "enable_console_log", true, "Determine whether to write console logs")
-	fs.BoolVar(&o.EnableFileLog, "enable_file_log", false, "Determine whether to write file logs")
-	fs.StringVar(&o.FileLogDir, "file_log_dir", ".", "If non-empty, write log files in this directory")
-	fs.StringVar(&o.FileLogName, "file_log_name", "server.log", "If non-empty, use this log file name")
-	fs.IntVar(&o.FileLogNum, "file_log_num", 3, "Max file number")
-	fs.IntVar(&o.FileLogSize, "file_log_size", 500, "File log max size, unit is MB")
-	fs.IntVar(&o.FileLogAge, "file_log_age", 15, "File log max age, unit is day")
+	if o == nil {
+		return
+	}
+
+	fs.StringVar(&o.LogLevel, "log-level", o.LogLevel, "CronD service log level")
+	fs.StringVar(&o.LogMode, "log-mode", o.LogMode, "Log mode decides debug or production log")
+	fs.StringVar(&o.LogEncoder, "log-encoder", o.LogEncoder, "Log encoder decides json encoder or console encoder")
+	fs.BoolVar(&o.EnableConsoleLog, "enable-console-log", o.EnableConsoleLog, "Determine whether to write console logs")
+	fs.BoolVar(&o.EnableFileLog, "enable-file-log", o.EnableFileLog, "Determine whether to write file logs")
+	fs.StringVar(&o.FileLogDir, "file-log-dir", o.FileLogDir, "If non-empty, write log files in this directory")
+	fs.StringVar(&o.FileLogName, "file-log-name", o.FileLogName, "If non-empty, use this log file name")
+	fs.IntVar(&o.FileLogNum, "file-log-num", o.FileLogNum, "Max file number")
+	fs.IntVar(&o.FileLogSize, "file-log-size", o.FileLogSize, "File log max size, unit is MB")
+	fs.IntVar(&o.FileLogAge, "file-log-age", o.FileLogAge, "File log max age, unit is day")
 }
