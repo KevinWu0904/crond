@@ -102,6 +102,9 @@ issues:
     - linters:
         - staticcheck
       text: 'SA1029:'
+    - linters:
+        - gocritic
+      text: 'unnamedResult: consider giving a name to these results'
     - path: server.go
       linters:
         - gocritic
