@@ -2,8 +2,6 @@ package logs
 
 import (
 	"context"
-	"flag"
-	"fmt"
 	"os"
 	"path"
 
@@ -15,21 +13,6 @@ import (
 var log *zap.Logger
 var sugaredLog *zap.SugaredLogger
 
-var (
-	logLevel string
-
-	logMode string
-
-	enableConsole bool
-	enableFile    bool
-
-	logDir     string
-	logFile    string
-	logFileNum int
-	logSize    int
-	logAge     int
-)
-
 var logLevelMapping = map[string]zapcore.Level{
 	"debug": zap.DebugLevel,
 	"info":  zap.InfoLevel,
@@ -39,50 +22,43 @@ var logLevelMapping = map[string]zapcore.Level{
 	"fatal": zap.FatalLevel,
 }
 
-func init() {
-	flag.StringVar(&logLevel, "log_level", "info", "CronD service log level")
-
-	flag.StringVar(&logMode, "log_mode", "debug", "Log mode decides the log format, json or console encoder")
-
-	flag.BoolVar(&enableConsole, "enable_console", true, "Determine whether to write console logs")
-	flag.BoolVar(&enableFile, "enable_file", false, "Determine whether to write file logs")
-
-	flag.StringVar(&logDir, "log_dir", "", "If non-empty, write log files in this directory")
-	flag.StringVar(&logFile, "log_file", "", "If non-empty, use this log file")
-	flag.IntVar(&logFileNum, "log_file_num", 3, "Max file number")
-	flag.IntVar(&logSize, "log_size", 500, "File log max size, unit is MB")
-	flag.IntVar(&logAge, "log_age", 15, "File log max age, unit is day")
-}
-
-func Init() {
-	level, ok := logLevelMapping[logLevel]
+func Init(options *LoggerOptions) {
+	level, ok := logLevelMapping[options.LogLevel]
 	if !ok {
-		panic(fmt.Sprintf("invalid log level: %s", logLevel))
+		panic("invalid log level")
 	}
 
 	syncers := make([]zapcore.WriteSyncer, 0)
 
-	if enableConsole {
+	if options.EnableConsoleLog {
 		syncers = append(syncers, zapcore.AddSync(os.Stdout))
 	}
 
-	if enableFile {
+	if options.EnableFileLog {
 		syncers = append(syncers, zapcore.AddSync(&lumberjack.Logger{
-			Filename:   path.Join(logDir, logFile),
-			MaxSize:    logSize,
-			MaxBackups: logFileNum,
-			MaxAge:     logAge,
+			Filename:   path.Join(options.FileLogDir, options.FileLogName),
+			MaxSize:    options.FileLogSize,
+			MaxBackups: options.FileLogNum,
+			MaxAge:     options.FileLogAge,
 			Compress:   true,
 		}))
 	}
 
+	var encoderConfig zapcore.EncoderConfig
 	var encoder zapcore.Encoder
 	var multiWriteSyncer zapcore.WriteSyncer
 
-	if logMode == "debug" {
-		encoder = zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+	if options.LogMode == "debug" {
+		encoderConfig = zap.NewDevelopmentEncoderConfig()
 	} else {
-		encoder = zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
+		encoderConfig = zap.NewProductionEncoderConfig()
+	}
+
+	switch options.LogEncoder {
+	case "console":
+		encoder = zapcore.NewConsoleEncoder(encoderConfig)
+	case "json":
+		encoder = zapcore.NewJSONEncoder(encoderConfig)
 	}
 
 	multiWriteSyncer = zapcore.NewMultiWriteSyncer(syncers...)
