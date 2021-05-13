@@ -105,7 +105,7 @@ issues:
     - linters:
         - gocritic
       text: 'unnamedResult: consider giving a name to these results'
-    - path: server.go
+    - path: router.go
       linters:
         - gocritic
       text: 'unnecessaryBlock:'

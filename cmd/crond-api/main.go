@@ -6,13 +6,7 @@ import (
 )
 
 func main() {
-	options := app.NewAPIServerOptions()
-	command := app.NewAPIServerCommand(options)
-
-	logs.Init(options.LoggerOptions)
-	defer logs.Flush()
-
-	if err := command.Execute(); err != nil {
+	if err := app.NewAPIServerCommand().Execute(); err != nil {
 		logs.Error("Execute crond-api server command failed: err=%v", err)
 	}
 }
