@@ -5,6 +5,7 @@ import (
 
 	"github.com/KevinWu0904/crond/pkg/flag"
 	"github.com/KevinWu0904/crond/pkg/logs"
+	"github.com/KevinWu0904/crond/pkg/mysql"
 	"github.com/KevinWu0904/crond/pkg/term"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -12,16 +13,19 @@ import (
 
 type APIServerOptions struct {
 	LoggerOptions *logs.LoggerOptions
+	DBOptions     *mysql.DBOptions
 }
 
 func NewAPIServerOptions() *APIServerOptions {
 	return &APIServerOptions{
 		LoggerOptions: logs.NewLoggerOptions(),
+		DBOptions:     mysql.NewDBOptions(),
 	}
 }
 
 func (options *APIServerOptions) BindNamedFlagSets(nfs *flag.NamedFlagSets) {
 	options.LoggerOptions.BindFlags(nfs.NewFlatSet("log"))
+	options.DBOptions.BindFlags(nfs.NewFlatSet("mysql"))
 }
 
 func NewAPIServerCommand() *cobra.Command {
@@ -58,9 +62,13 @@ func NewAPIServerCommand() *cobra.Command {
 }
 
 func RunAPIServer(options *APIServerOptions) error {
+	// Initialization
 	logs.Init(options.LoggerOptions)
 	defer logs.Flush()
 
+	mysql.Init(options.DBOptions)
+
+	// Gin Handler
 	r := gin.New()
 
 	RegisterAPIServer(r)
