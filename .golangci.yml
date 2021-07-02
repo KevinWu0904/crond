@@ -87,3 +87,12 @@ linters:
     - unused
     - varcheck
     - whitespace
+
+issues:
+  exclude-rules:
+    - linters:
+        - gomnd
+      text: 'mnd: Magic number'
+    - linters:
+        - gocritic
+      text: 'unnamedResult'
