@@ -32,8 +32,22 @@ func DefaultLoggerConfig() *LoggerConfig {
 
 // BindLoggerFlags overwrites default logger configurations from CLI flags.
 func BindLoggerFlags(c *LoggerConfig, fs *pflag.FlagSet) {
-	fs.StringVar(&c.LogLevel, "log-level", c.LogLevel, "level")
-	fs.StringVar(&c.LogEncoder, "log-encoder", c.LogEncoder, "encoder")
-	fs.BoolVar(&c.EnableConsoleLog, "enable-console-log", c.EnableConsoleLog, "")
-	fs.BoolVar(&c.EnableFileLog, "enable-file-log", c.EnableFileLog, "")
+	fs.StringVar(&c.LogLevel, "log-level", c.LogLevel, "crond log level, it can be one of "+
+		"(debug|info|warn|error|panic|fatal)")
+	fs.StringVar(&c.LogEncoder, "log-encoder", c.LogEncoder, "crond log encoder, it can be one of "+
+		"(console|json)")
+	fs.BoolVar(&c.EnableConsoleLog, "enable-console-log", c.EnableConsoleLog, "if true, crond will log "+
+		"append standard console additionally")
+	fs.BoolVar(&c.EnableFileLog, "enable-file-log", c.EnableFileLog, "if true, crond will log append "+
+		"specific file additionally")
+	fs.StringVar(&c.FileLogDir, "file-log-dir", c.FileLogDir, "when enable-file-log is true, this param "+
+		"indicates log file path")
+	fs.StringVar(&c.FileLogName, "file-log-name", c.FileLogName, "when enable-file-log is true, this param "+
+		"indicates log file name")
+	fs.IntVar(&c.FileLogNum, "file-log-num", c.FileLogNum, "when enable-file-log is true, we can reserve "+
+		"at most file-log-num for log rotation files")
+	fs.IntVar(&c.FileLogSize, "file-log-size", c.FileLogSize, "when enable-file-log is true, we should "+
+		"rotate log once actual log size larger than file-log-size (unit is MB)")
+	fs.IntVar(&c.FileLogAge, "file-log-age", c.FileLogAge, "when enable-file-log is true, we can reserve "+
+		"at most file-log-age days for log rotation files (unit is Day)")
 }

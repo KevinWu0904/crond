@@ -21,7 +21,7 @@ var configFile string
 // Command represents the crond CLI.
 var Command = &cobra.Command{
 	Use:   "crond",
-	Short: "CronD is a Cloud Native golang distributed cron scheduling framework.",
+	Short: "CronD is a Cloud Native golang distributed cron scheduling service.",
 	Long: `CronD serves a distributed unified job dispatcher for offline periodic tasks. It is recommended running in 
 a cluster with 3 or 5 nodes, peer nodes communicates by Raft Consensus.`,
 	Run: Run,
