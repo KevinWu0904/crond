@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package types;
+
+option go_package = "github.com/KevinWu0904/crond/proto/types";
+
+message Job {
+  string job_id = 1;
+  string job_name = 2;
+  string cron_expression = 3;
+}
+
+message SetJobRequest {
+  Job job = 1;
+}
+
+message SetJobResponse {
+  Job job = 1;
+}
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message GetJobResponse {
+  Job job = 1;
+}
+
+message DeleteJobRequest {
+  string job_id = 1;
+}
+
+message DeleteJobResponse {
+}
+
+service Crond {
+  rpc SetJob(SetJobRequest) returns (SetJobResponse);
+  rpc GetJob(GetJobRequest) returns (GetJobResponse);
+  rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse);
+}
