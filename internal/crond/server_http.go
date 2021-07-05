@@ -1,6 +1,9 @@
 package crond
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-contrib/pprof"
+	"github.com/gin-gonic/gin"
+)
 
 // HTTPServer serves crond HTTP/1.x protocol APIs.
 type HTTPServer struct {
@@ -34,6 +37,8 @@ func (hs *HTTPServer) UpdateJob(c *gin.Context) {
 // RegisterCrondHTTPServer defines crond HTTP routers.
 // nolint
 func RegisterCrondHTTPServer(r *gin.Engine, server *HTTPServer) {
+	pprof.Register(r)
+
 	v1 := r.Group("/v1")
 	{
 		jobs := v1.Group("/jobs")
