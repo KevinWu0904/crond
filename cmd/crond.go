@@ -43,7 +43,7 @@ a cluster with 3 or 5 nodes, peer nodes communicates by Raft Consensus.`,
 }
 
 func init() {
-	cobra.OnInitialize(initConfig, initLogger)
+	cobra.OnInitialize(initConfig)
 
 	Command.PersistentFlags().StringVar(&configFile, "config", "", "crond config")
 
@@ -100,15 +100,13 @@ func initConfig() {
 	}
 }
 
-// initLogger initializes global zap logger instance.
-func initLogger() {
+// Run starts crond servers.
+func Run(cmd *cobra.Command, args []string) {
 	if err := logs.InitLogger(config.Logger); err != nil {
 		panic(err)
 	}
-}
+	defer logs.Flush()
 
-// Run starts crond servers.
-func Run(cmd *cobra.Command, args []string) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer stop()
 
