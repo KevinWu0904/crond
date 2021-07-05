@@ -1,8 +1,23 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
+
+	"github.com/KevinWu0904/crond/proto/types"
+
+	"google.golang.org/grpc"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/soheilhy/cmux"
 
 	"github.com/KevinWu0904/crond/pkg/term"
 
@@ -36,6 +51,7 @@ func init() {
 
 	// Bind custom named flag sets.
 	logs.BindLoggerFlags(config.Logger, nfs.NewFlatSet("logger"))
+	crond.BindServerFlags(config.Server, nfs.NewFlatSet("server"))
 
 	for _, fs := range nfs.FlagSets {
 		Command.Flags().AddFlagSet(fs)
@@ -91,6 +107,47 @@ func initLogger() {
 	}
 }
 
-// Run starts crond service.
+// Run starts crond servers.
 func Run(cmd *cobra.Command, args []string) {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	defer stop()
+
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(config.Server.ServerPort))
+	if err != nil {
+		panic(err)
+	}
+
+	logs.CtxInfo(ctx, "CronD start server ...: port=%d", config.Server.ServerPort)
+
+	mux := cmux.New(listener)
+
+	grpcListener := mux.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+	httpListener := mux.Match(cmux.HTTP1Fast())
+
+	grpcServer := grpc.NewServer()
+	crondGRPCServer := crond.NewGRPCServer()
+	types.RegisterCrondServer(grpcServer, crondGRPCServer)
+	logs.CtxInfo(ctx, "CronD start gRPC Server ...")
+	go grpcServer.Serve(grpcListener)
+
+	router := gin.Default()
+	httpServer := &http.Server{Handler: router}
+	crondHTTPServer := crond.NewHTTPServer()
+	crond.RegisterCrondHTTPServer(router, crondHTTPServer)
+	logs.CtxInfo(ctx, "CronD start HTTP Server ...")
+	go httpServer.Serve(httpListener)
+
+	logs.CtxInfo(ctx, "CronD servers starting ...")
+	go mux.Serve()
+
+	<-ctx.Done()
+	stop()
+
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	grpcServer.GracefulStop()
+	httpServer.Shutdown(ctx)
+
+	logs.CtxInfo(ctx, "CronD stop gracefully")
 }
