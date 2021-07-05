@@ -7,3 +7,11 @@
 #   3. go plugin: go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1 .
 proto:
 	protoc -I proto/ --go_out=proto/types --go_opt=paths=source_relative --go-grpc_out=proto/types --go-grpc_opt=paths=source_relative proto/crond.proto
+
+build:
+	mkdir -p ./bin/
+	go mod tidy
+	go build -o ./bin/
+
+clean:
+	rm -rf ./bin/
