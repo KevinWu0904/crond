@@ -101,6 +101,16 @@ func Flush() {
 	sugaredLogger.Sync()
 }
 
+// GetLogger returns zap.Logger singleton.
+func GetLogger() *zap.Logger {
+	return logger
+}
+
+// GetSugaredLogger returns zap.SugaredLogger singleton.
+func GetSugaredLogger() *zap.SugaredLogger {
+	return sugaredLogger
+}
+
 // CtxDebug logs a debug level record with specific kvs.
 func CtxDebug(ctx context.Context, template string, args ...interface{}) {
 	sugaredLogger.With(GetAllKVs(ctx)...).Debugf(template, args...)

@@ -11,23 +11,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/KevinWu0904/crond/proto/types"
-
-	"google.golang.org/grpc"
-
-	"github.com/gin-gonic/gin"
-
-	"github.com/soheilhy/cmux"
-
-	"github.com/KevinWu0904/crond/pkg/term"
-
-	"github.com/KevinWu0904/crond/pkg/logs"
-
-	"github.com/KevinWu0904/crond/pkg/flag"
-
 	"github.com/KevinWu0904/crond/internal/crond"
+	"github.com/KevinWu0904/crond/pkg/flag"
+	"github.com/KevinWu0904/crond/pkg/logs"
+	"github.com/KevinWu0904/crond/pkg/term"
+	"github.com/KevinWu0904/crond/proto/types"
+	ginzap "github.com/gin-contrib/zap"
+	"github.com/gin-gonic/gin"
+	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 )
 
 var config = crond.DefaultConfig()
@@ -129,6 +123,9 @@ func Run(cmd *cobra.Command, args []string) {
 	go grpcServer.Serve(grpcListener)
 
 	router := gin.Default()
+	router.Use(ginzap.Ginzap(logs.GetLogger(), "2006-01-02T15:04:05.000Z0700", false))
+	router.Use(ginzap.RecoveryWithZap(logs.GetLogger(), true))
+
 	httpServer := &http.Server{Handler: router}
 	crondHTTPServer := crond.NewHTTPServer()
 	crond.RegisterCrondHTTPServer(router, crondHTTPServer)
