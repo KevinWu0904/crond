@@ -38,34 +38,58 @@ func InitLogger(c *LoggerConfig) error {
 	}
 
 	var encoder zapcore.Encoder
-	var multiWriteSyncer zapcore.WriteSyncer
 
 	switch c.LogEncoder {
 	case "json":
 		encoder = zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
 	case "console":
-		encoder = zapcore.NewConsoleEncoder(zap.NewProductionEncoderConfig())
+		encoder = zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
 	default:
 		return ErrInvalidLogEncoder
 	}
 
-	syncers := make([]zapcore.WriteSyncer, 0)
+	cores := make([]zapcore.Core, 0)
+
 	if c.EnableConsoleLog {
-		syncers = append(syncers, zapcore.AddSync(os.Stdout))
+		normal := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
+			return l >= level && l < zapcore.ErrorLevel
+		})
+		critical := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
+			return l >= level && l >= zapcore.ErrorLevel
+		})
+		cores = append(cores,
+			zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), normal),
+			zapcore.NewCore(encoder, zapcore.Lock(os.Stderr), critical),
+		)
 	}
 	if c.EnableFileLog {
-		syncers = append(syncers, zapcore.AddSync(&lumberjack.Logger{
-			Filename:   path.Join(c.FileLogDir, c.FileLogName),
+		normal := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
+			return l >= level && l >= zapcore.DebugLevel
+		})
+		critical := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
+			return l >= level && l >= zapcore.ErrorLevel
+		})
+		cores = append(cores, zapcore.NewCore(encoder, zapcore.AddSync(&lumberjack.Logger{
+			Filename:   path.Join(c.FileLogDir, c.FileLogName+".log"),
 			MaxSize:    c.FileLogSize,
 			MaxAge:     c.FileLogAge,
 			MaxBackups: c.FileLogNum,
 			LocalTime:  true,
 			Compress:   true,
-		}))
+		}), normal), zapcore.NewCore(encoder, zapcore.AddSync(&lumberjack.Logger{
+			Filename:   path.Join(c.FileLogDir, c.FileLogName+".err.log"),
+			MaxSize:    c.FileLogSize,
+			MaxAge:     c.FileLogAge,
+			MaxBackups: c.FileLogNum,
+			LocalTime:  true,
+			Compress:   true,
+		}), critical),
+		)
 	}
-	multiWriteSyncer = zapcore.NewMultiWriteSyncer(syncers...)
 
-	logger = zap.New(zapcore.NewCore(encoder, multiWriteSyncer, level), zap.AddCaller(), zap.AddCallerSkip(1),
+	logger = zap.New(zapcore.NewTee(cores...),
+		zap.AddCaller(),
+		zap.AddCallerSkip(1),
 		zap.AddStacktrace(zap.ErrorLevel))
 	sugaredLogger = logger.Sugar()
 
