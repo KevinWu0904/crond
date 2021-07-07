@@ -4,10 +4,10 @@ run:
 
 linters-settings:
   dupl:
-    threshold: 100
+    threshold: 150
   funlen:
     lines: 100
-    statements: 50
+    statements: 75
   gci:
     local-prefixes: github.com/golangci/golangci-lint
   goconst:
