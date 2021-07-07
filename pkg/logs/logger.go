@@ -3,6 +3,7 @@ package logs
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path"
 
@@ -12,8 +13,13 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+var atomicLevel zap.AtomicLevel
 var logger *zap.Logger
 var sugaredLogger *zap.SugaredLogger
+
+var ginWriteSyncer = io.Discard
+var ginErrorWriteSyncer = io.Discard
+var raftWriteSyncer = io.Discard
 
 var logLevelMapping = map[string]zapcore.Level{
 	"debug": zap.DebugLevel,
@@ -36,9 +42,9 @@ func InitLogger(c *LoggerConfig) error {
 	if !ok {
 		return ErrInvalidLogLevel
 	}
+	atomicLevel = zap.NewAtomicLevelAt(level)
 
 	var encoder zapcore.Encoder
-
 	switch c.LogEncoder {
 	case "json":
 		encoder = zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
@@ -48,43 +54,68 @@ func InitLogger(c *LoggerConfig) error {
 		return ErrInvalidLogEncoder
 	}
 
-	cores := make([]zapcore.Core, 0)
+	namedWS := func(c *LoggerConfig, name string) zapcore.WriteSyncer {
+		var fullName string
+		if name == "" {
+			fullName = c.FileLogName + ".log"
+		} else {
+			fullName = c.FileLogName + "." + name + ".log"
+		}
 
+		return zapcore.AddSync(&lumberjack.Logger{
+			Filename:   path.Join(c.FileLogDir, fullName),
+			MaxSize:    c.FileLogSize,
+			MaxAge:     c.FileLogAge,
+			MaxBackups: c.FileLogNum,
+			LocalTime:  true,
+			Compress:   true,
+		})
+	}
+	crondWS := namedWS(c, "")
+	crondErrWS := namedWS(c, "err")
+	ginWS := namedWS(c, "gin")
+	ginErrWS := namedWS(c, "gin.err")
+	raftWS := namedWS(c, "raft")
+	stdoutWS := zapcore.Lock(os.Stdout)
+	stderrWS := zapcore.Lock(os.Stderr)
+
+	cores := make([]zapcore.Core, 0)
+	ginWSs := make([]zapcore.WriteSyncer, 0)
+	ginErrWSs := make([]zapcore.WriteSyncer, 0)
+	raftWSs := make([]zapcore.WriteSyncer, 0)
 	if c.EnableConsoleLog {
 		normal := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
-			return l >= level && l < zapcore.ErrorLevel
+			return l >= atomicLevel.Level() && l < zapcore.ErrorLevel
 		})
 		critical := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
-			return l >= level && l >= zapcore.ErrorLevel
+			return l >= atomicLevel.Level() && l >= zapcore.ErrorLevel
 		})
+
 		cores = append(cores,
-			zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), normal),
-			zapcore.NewCore(encoder, zapcore.Lock(os.Stderr), critical),
+			zapcore.NewCore(encoder, stdoutWS, normal),
+			zapcore.NewCore(encoder, stderrWS, critical),
 		)
+
+		ginWSs = append(ginWSs, stdoutWS)
+		ginErrWSs = append(ginErrWSs, stderrWS)
+		raftWSs = append(raftWSs, stdoutWS)
 	}
 	if c.EnableFileLog {
 		normal := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
-			return l >= level && l >= zapcore.DebugLevel
+			return l >= atomicLevel.Level() && l >= zapcore.DebugLevel
 		})
 		critical := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
-			return l >= level && l >= zapcore.ErrorLevel
+			return l >= atomicLevel.Level() && l >= zapcore.ErrorLevel
 		})
-		cores = append(cores, zapcore.NewCore(encoder, zapcore.AddSync(&lumberjack.Logger{
-			Filename:   path.Join(c.FileLogDir, c.FileLogName+".log"),
-			MaxSize:    c.FileLogSize,
-			MaxAge:     c.FileLogAge,
-			MaxBackups: c.FileLogNum,
-			LocalTime:  true,
-			Compress:   true,
-		}), normal), zapcore.NewCore(encoder, zapcore.AddSync(&lumberjack.Logger{
-			Filename:   path.Join(c.FileLogDir, c.FileLogName+".err.log"),
-			MaxSize:    c.FileLogSize,
-			MaxAge:     c.FileLogAge,
-			MaxBackups: c.FileLogNum,
-			LocalTime:  true,
-			Compress:   true,
-		}), critical),
+
+		cores = append(cores,
+			zapcore.NewCore(encoder, crondWS, normal),
+			zapcore.NewCore(encoder, crondErrWS, critical),
 		)
+
+		ginWSs = append(ginWSs, ginWS)
+		ginErrWSs = append(ginErrWSs, ginErrWS)
+		raftWSs = append(raftWSs, raftWS)
 	}
 
 	logger = zap.New(zapcore.NewTee(cores...),
@@ -92,6 +123,16 @@ func InitLogger(c *LoggerConfig) error {
 		zap.AddCallerSkip(1),
 		zap.AddStacktrace(zap.ErrorLevel))
 	sugaredLogger = logger.Sugar()
+
+	if len(ginWSs) > 0 {
+		ginWriteSyncer = zapcore.NewMultiWriteSyncer(ginWSs...)
+	}
+	if len(ginErrWSs) > 0 {
+		ginErrorWriteSyncer = zapcore.NewMultiWriteSyncer(ginErrWSs...)
+	}
+	if len(raftWSs) > 0 {
+		raftWriteSyncer = zapcore.NewMultiWriteSyncer(raftWSs...)
+	}
 
 	return nil
 }
@@ -109,6 +150,31 @@ func GetLogger() *zap.Logger {
 // GetSugaredLogger returns zap.SugaredLogger singleton.
 func GetSugaredLogger() *zap.SugaredLogger {
 	return sugaredLogger
+}
+
+// GetGinWriter returns io.Writer for gin normal log.
+func GetGinWriter() io.Writer {
+	return ginWriteSyncer
+}
+
+// GetGinErrorWriter returns io.Writer for gin critical log.
+func GetGinErrorWriter() io.Writer {
+	return ginErrorWriteSyncer
+}
+
+// GetRaftWriter returns io.Writer for raft log.
+func GetRaftWriter() io.Writer {
+	return raftWriteSyncer
+}
+
+// Level returns zapcore.Level.
+func Level() zapcore.Level {
+	return atomicLevel.Level()
+}
+
+// SetLevel changes zapcore.Level.
+func SetLevel(level zapcore.Level) {
+	atomicLevel.SetLevel(level)
 }
 
 // CtxDebug logs a debug level record with specific kvs.

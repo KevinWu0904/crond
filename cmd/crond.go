@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/KevinWu0904/crond/internal/config"
 	"github.com/KevinWu0904/crond/internal/crond"
 	"github.com/KevinWu0904/crond/pkg/flag"
 	"github.com/KevinWu0904/crond/pkg/logs"
@@ -24,8 +25,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-var config = crond.DefaultConfig()
-var configFile string
+var cfg = config.DefaultConfig()
+var cfgFile string
 
 // Command represents the crond CLI.
 var Command = &cobra.Command{
@@ -39,13 +40,13 @@ a cluster with 3 or 5 nodes, peer nodes communicates by Raft Consensus.`,
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	Command.PersistentFlags().StringVar(&configFile, "config", "", "crond config")
+	Command.PersistentFlags().StringVar(&cfgFile, "config", "", "crond config")
 
 	nfs := flag.NewNamedFlagSets()
 
 	// Bind custom named flag sets.
-	logs.BindLoggerFlags(config.Logger, nfs.NewFlatSet("logger"))
-	crond.BindServerFlags(config.Server, nfs.NewFlatSet("server"))
+	logs.BindLoggerFlags(cfg.Logger, nfs.NewFlatSet("logger"))
+	crond.BindServerFlags(cfg.Server, nfs.NewFlatSet("server"))
 
 	for _, fs := range nfs.FlagSets {
 		Command.Flags().AddFlagSet(fs)
@@ -70,8 +71,8 @@ func init() {
 
 // initConfig reads configs from specific directories or environment variables.
 func initConfig() {
-	if configFile != "" {
-		viper.SetConfigFile(configFile)
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
 	} else {
 		viper.SetConfigName("crond-config")
 		viper.SetConfigType("yaml")
@@ -89,14 +90,14 @@ func initConfig() {
 	}
 	fmt.Fprintf(os.Stdout, "initConfig succeed to load config file: file=%s\n", viper.ConfigFileUsed())
 
-	if err := viper.Unmarshal(config); err != nil {
+	if err := viper.Unmarshal(cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "initConfig failed to unmarshal config file: err=%v", err)
 	}
 }
 
 // Run starts crond servers.
 func Run(cmd *cobra.Command, args []string) {
-	if err := logs.InitLogger(config.Logger); err != nil {
+	if err := logs.InitLogger(cfg.Logger); err != nil {
 		panic(err)
 	}
 	defer logs.Flush()
@@ -104,12 +105,12 @@ func Run(cmd *cobra.Command, args []string) {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer stop()
 
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(config.Server.ServerPort))
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(cfg.Server.ServerPort))
 	if err != nil {
 		panic(err)
 	}
 
-	logs.CtxInfo(ctx, "CronD start server ...: port=%d", config.Server.ServerPort)
+	logs.CtxInfo(ctx, "CronD start server ...: port=%d", cfg.Server.ServerPort)
 
 	mux := cmux.New(listener)
 
@@ -123,6 +124,8 @@ func Run(cmd *cobra.Command, args []string) {
 	go grpcServer.Serve(grpcListener)
 
 	router := gin.Default()
+	gin.DefaultWriter = logs.GetGinWriter()
+	gin.DefaultErrorWriter = logs.GetGinErrorWriter()
 	router.Use(ginzap.Ginzap(logs.GetLogger(), "2006-01-02T15:04:05.000Z0700", false))
 	router.Use(ginzap.RecoveryWithZap(logs.GetLogger(), true))
 

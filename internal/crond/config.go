@@ -1,19 +1,22 @@
 package crond
 
 import (
-	"github.com/KevinWu0904/crond/pkg/logs"
+	"github.com/spf13/pflag"
 )
 
-// Config stores all crond configurations.
-type Config struct {
-	Logger *logs.LoggerConfig
-	Server *ServerConfig
+// ServerConfig stores all crond server configurations.
+type ServerConfig struct {
+	ServerPort int
 }
 
-// DefaultConfig creates the Config with sensible default settings.
-func DefaultConfig() *Config {
-	return &Config{
-		Logger: logs.DefaultLoggerConfig(),
-		Server: DefaultServerConfig(),
+// DefaultServerConfig creates the ServerConfig with sensible default settings.
+func DefaultServerConfig() *ServerConfig {
+	return &ServerConfig{
+		ServerPort: 5281,
 	}
+}
+
+// BindServerFlags overwrites default server configurations from CLI flags.
+func BindServerFlags(c *ServerConfig, fs *pflag.FlagSet) {
+	fs.IntVar(&c.ServerPort, "server-port", c.ServerPort, "crond server port")
 }
