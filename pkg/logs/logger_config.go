@@ -22,7 +22,7 @@ func DefaultLoggerConfig() *LoggerConfig {
 		LogEncoder:       "console",
 		EnableConsoleLog: true,
 		EnableFileLog:    false,
-		FileLogDir:       ".",
+		FileLogDir:       "log",
 		FileLogName:      "crond",
 		FileLogNum:       3,
 		FileLogSize:      500,
