@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/KevinWu0904/crond/internal/raft"
+
 	"github.com/KevinWu0904/crond/internal/config"
 	"github.com/KevinWu0904/crond/internal/crond"
 	"github.com/KevinWu0904/crond/pkg/flag"
@@ -46,6 +48,7 @@ func init() {
 
 	// Bind custom named flag sets.
 	logs.BindLoggerFlags(cfg.Logger, nfs.NewFlatSet("logger"))
+	raft.BindLayerFlags(cfg.Raft, nfs.NewFlatSet("raft"))
 	crond.BindServerFlags(cfg.Server, nfs.NewFlatSet("server"))
 
 	for _, fs := range nfs.FlagSets {

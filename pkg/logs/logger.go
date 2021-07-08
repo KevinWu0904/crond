@@ -75,14 +75,14 @@ func InitLogger(c *LoggerConfig) error {
 	crondErrWS := namedWS(c, "err")
 	ginWS := namedWS(c, "gin")
 	ginErrWS := namedWS(c, "gin.err")
-	raftWS := namedWS(c, "raft")
+	raftErrWS := namedWS(c, "raft.err")
 	stdoutWS := zapcore.Lock(os.Stdout)
 	stderrWS := zapcore.Lock(os.Stderr)
 
 	cores := make([]zapcore.Core, 0)
 	ginWSs := make([]zapcore.WriteSyncer, 0)
 	ginErrWSs := make([]zapcore.WriteSyncer, 0)
-	raftWSs := make([]zapcore.WriteSyncer, 0)
+	raftErrWSs := make([]zapcore.WriteSyncer, 0)
 	if c.EnableConsoleLog {
 		normal := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
 			return l >= atomicLevel.Level() && l < zapcore.ErrorLevel
@@ -98,7 +98,7 @@ func InitLogger(c *LoggerConfig) error {
 
 		ginWSs = append(ginWSs, stdoutWS)
 		ginErrWSs = append(ginErrWSs, stderrWS)
-		raftWSs = append(raftWSs, stdoutWS)
+		raftErrWSs = append(raftErrWSs, stderrWS)
 	}
 	if c.EnableFileLog {
 		normal := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
@@ -115,7 +115,7 @@ func InitLogger(c *LoggerConfig) error {
 
 		ginWSs = append(ginWSs, ginWS)
 		ginErrWSs = append(ginErrWSs, ginErrWS)
-		raftWSs = append(raftWSs, raftWS)
+		raftErrWSs = append(raftErrWSs, raftErrWS)
 	}
 
 	logger = zap.New(zapcore.NewTee(cores...),
@@ -130,8 +130,8 @@ func InitLogger(c *LoggerConfig) error {
 	if len(ginErrWSs) > 0 {
 		ginErrorWriteSyncer = zapcore.NewMultiWriteSyncer(ginErrWSs...)
 	}
-	if len(raftWSs) > 0 {
-		raftWriteSyncer = zapcore.NewMultiWriteSyncer(raftWSs...)
+	if len(raftErrWSs) > 0 {
+		raftWriteSyncer = zapcore.NewMultiWriteSyncer(raftErrWSs...)
 	}
 
 	return nil
@@ -162,8 +162,8 @@ func GetGinErrorWriter() io.Writer {
 	return ginErrorWriteSyncer
 }
 
-// GetRaftWriter returns io.Writer for raft log.
-func GetRaftWriter() io.Writer {
+// GetRaftErrorWriter returns io.Writer for raft log.
+func GetRaftErrorWriter() io.Writer {
 	return raftWriteSyncer
 }
 
