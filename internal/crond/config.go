@@ -6,7 +6,7 @@ import (
 
 // ServerConfig stores all crond server configurations.
 type ServerConfig struct {
-	ServerPort int
+	ServerPort int `mapstructure:"server-port"`
 }
 
 // DefaultServerConfig creates the ServerConfig with sensible default settings.
