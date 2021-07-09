@@ -8,9 +8,9 @@ import (
 
 // Config stores all crond configurations.
 type Config struct {
-	Logger *logs.LoggerConfig
-	Server *crond.ServerConfig
-	Raft   *raft.LayerConfig
+	Logger *logs.LoggerConfig  `mapstructure:"logger"`
+	Server *crond.ServerConfig `mapstructure:"server"`
+	Raft   *raft.LayerConfig   `mapstructure:"raft"`
 }
 
 // DefaultConfig creates the Config with sensible default settings.

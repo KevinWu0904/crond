@@ -4,15 +4,15 @@ import "github.com/spf13/pflag"
 
 // LoggerConfig stores all crond logger configurations.
 type LoggerConfig struct {
-	LogLevel         string
-	LogEncoder       string
-	EnableConsoleLog bool
-	EnableFileLog    bool
-	FileLogDir       string
-	FileLogName      string
-	FileLogNum       int
-	FileLogSize      int
-	FileLogAge       int
+	LogLevel         string `mapstructure:"log-level"`
+	LogEncoder       string `mapstructure:"log-encoder"`
+	EnableConsoleLog bool   `mapstructure:"enable-console-log"`
+	EnableFileLog    bool   `mapstructure:"enable-file-log"`
+	FileLogDir       string `mapstructure:"file-log-dir"`
+	FileLogName      string `mapstructure:"file-log-name"`
+	FileLogNum       int    `mapstructure:"file-log-num"`
+	FileLogSize      int    `mapstructure:"file-log-size"`
+	FileLogAge       int    `mapstructure:"file-log-age"`
 }
 
 // DefaultLoggerConfig creates the LoggerConfig with sensible default settings.
