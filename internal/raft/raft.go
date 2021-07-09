@@ -32,7 +32,7 @@ type Layer struct {
 // NewLayer creates crond raft Layer.
 func NewLayer(c *LayerConfig, listener net.Listener) *Layer {
 	rc := raft.DefaultConfig()
-	rc.LogOutput = logs.GetRaftErrorWriter()
+	rc.LogOutput = logs.GetRaftWriter()
 	rc.LocalID = raft.ServerID(c.RaftNode)
 
 	var err error
@@ -48,7 +48,7 @@ func NewLayer(c *LayerConfig, listener net.Listener) *Layer {
 		stableStore = memStore
 		logStore = memStore
 	} else {
-		snapshotStore, err = raft.NewFileSnapshotStore(path.Join(c.RaftDataDir, "raft"), raftFileSnapshotStoreRetain, logs.GetRaftErrorWriter())
+		snapshotStore, err = raft.NewFileSnapshotStore(path.Join(c.RaftDataDir, "raft"), raftFileSnapshotStoreRetain, logs.GetRaftWriter())
 		if err != nil {
 			logs.Fatal("NewLayer failed to create snapshotStore: err=%v", err)
 		}
@@ -66,7 +66,7 @@ func NewLayer(c *LayerConfig, listener net.Listener) *Layer {
 		}
 	}
 	transport := raft.NewNetworkTransport(NewStreamLayer(listener), raftNetworkTransportMaxPool,
-		raftNetworkTransportTimeout, logs.GetRaftErrorWriter())
+		raftNetworkTransportTimeout, logs.GetRaftWriter())
 
 	underlay, err := raft.NewRaft(rc, nil, logStore, stableStore, snapshotStore, transport)
 	if err != nil {
