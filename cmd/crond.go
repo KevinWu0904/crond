@@ -121,6 +121,7 @@ func Run(cmd *cobra.Command, args []string) {
 
 	grpcListener := mux.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
 	httpListener := mux.Match(cmux.HTTP1Fast())
+	raftListener := mux.Match(cmux.Any())
 
 	grpcServer := grpc.NewServer()
 	crondGRPCServer := crond.NewGRPCServer()
@@ -140,6 +141,9 @@ func Run(cmd *cobra.Command, args []string) {
 	logs.CtxInfo(ctx, "CronD start HTTP Server ...")
 	go httpServer.Serve(httpListener)
 
+	raftLayer := raft.NewLayer(cfg.Raft, raftListener)
+	go raftLayer.Run()
+
 	logs.CtxInfo(ctx, "CronD servers starting ...")
 	go mux.Serve()
 
@@ -151,6 +155,7 @@ func Run(cmd *cobra.Command, args []string) {
 
 	grpcServer.GracefulStop()
 	httpServer.Shutdown(ctx)
+	mux.Close()
 
 	logs.CtxInfo(ctx, "CronD stop gracefully")
 }
