@@ -23,7 +23,7 @@ func NewNamedFlagSets() *NamedFlagSets {
 	}
 }
 
-// NewFlatSet creates new FlagSet into NamedFlagSets.
+// NewFlatSet creates new pflag.FlagSet into NamedFlagSets.
 func (nfs *NamedFlagSets) NewFlatSet(name string) *pflag.FlagSet {
 	if _, ok := nfs.FlagSets[name]; !ok {
 		nfs.Order = append(nfs.Order, name)
@@ -33,7 +33,7 @@ func (nfs *NamedFlagSets) NewFlatSet(name string) *pflag.FlagSet {
 	return nfs.FlagSets[name]
 }
 
-// PrintSections provides human-readable flag set output.
+// PrintSections provides multiple human-readable flag set output.
 func PrintSections(w io.Writer, nfs *NamedFlagSets, cols int) {
 	for _, name := range nfs.Order {
 		fs := nfs.FlagSets[name]
@@ -41,25 +41,30 @@ func PrintSections(w io.Writer, nfs *NamedFlagSets, cols int) {
 			continue
 		}
 
-		wideFS := pflag.NewFlagSet("", pflag.ExitOnError)
-		wideFS.AddFlagSet(fs)
+		PrintSection(w, name, fs, cols)
+	}
+}
 
-		var zzz string
-		if cols > 24 {
-			zzz = strings.Repeat("z", cols-24)
-			wideFS.Int(zzz, 0, strings.Repeat("z", cols-24))
-		}
+// PrintSection provides human-readable flag set output.
+func PrintSection(w io.Writer, name string, fs *pflag.FlagSet, cols int) {
+	wideFS := pflag.NewFlagSet("", pflag.ExitOnError)
+	wideFS.AddFlagSet(fs)
 
-		var buf bytes.Buffer
-		fmt.Fprintf(&buf, "\n%s flags:\n%s", strings.ToUpper(name[:1])+name[1:], wideFS.FlagUsagesWrapped(cols))
+	var zzz string
+	if cols > 24 {
+		zzz = strings.Repeat("z", cols-24)
+		wideFS.Int(zzz, 0, strings.Repeat("z", cols-24))
+	}
 
-		if cols > 24 {
-			i := strings.Index(buf.String(), zzz)
-			lines := strings.Split(buf.String()[:i], "\n")
-			fmt.Fprint(w, strings.Join(lines[:len(lines)-1], "\n"))
-			fmt.Fprintln(w)
-		} else {
-			fmt.Fprint(w, buf.String())
-		}
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "\n%s flags:\n%s", strings.ToUpper(name[:1])+name[1:], wideFS.FlagUsagesWrapped(cols))
+
+	if cols > 24 {
+		i := strings.Index(buf.String(), zzz)
+		lines := strings.Split(buf.String()[:i], "\n")
+		fmt.Fprint(w, strings.Join(lines[:len(lines)-1], "\n"))
+		fmt.Fprintln(w)
+	} else {
+		fmt.Fprint(w, buf.String())
 	}
 }

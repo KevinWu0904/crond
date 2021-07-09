@@ -62,6 +62,7 @@ func init() {
 	Command.SetUsageFunc(func(cmd *cobra.Command) error {
 		fmt.Fprintf(cmd.OutOrStderr(), usageTpl, cmd.UseLine())
 		flag.PrintSections(cmd.OutOrStderr(), nfs, cols)
+		flag.PrintSection(cmd.OutOrStdout(), "global", cmd.PersistentFlags(), cols)
 		return nil
 	})
 
@@ -69,6 +70,7 @@ func init() {
 	Command.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		fmt.Fprintf(cmd.OutOrStdout(), helpTpl, cmd.Short, cmd.Long, cmd.UseLine())
 		flag.PrintSections(cmd.OutOrStdout(), nfs, cols)
+		flag.PrintSection(cmd.OutOrStdout(), "global", cmd.PersistentFlags(), cols)
 	})
 }
 
@@ -81,7 +83,7 @@ func initConfig() {
 		viper.SetConfigType("yaml")
 		viper.AddConfigPath("/etc/crond")
 		viper.AddConfigPath("$HOME/.crond")
-		viper.AddConfigPath("./conf")
+		viper.AddConfigPath(".")
 	}
 
 	viper.SetEnvPrefix("crond")
