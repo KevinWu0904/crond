@@ -2,7 +2,7 @@ package config
 
 import (
 	"github.com/KevinWu0904/crond/internal/crond"
-	"github.com/KevinWu0904/crond/internal/raft"
+	"github.com/KevinWu0904/crond/internal/crond/raft"
 	"github.com/KevinWu0904/crond/pkg/logs"
 )
 
