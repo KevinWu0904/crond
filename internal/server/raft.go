@@ -1,4 +1,4 @@
-package raft
+package server
 
 import (
 	"net"
@@ -17,8 +17,26 @@ const (
 	raftNetworkTransportTimeout = time.Second * 30
 )
 
-// Layer represents crond raft consensus.
-type Layer struct {
+// RaftStreamLayer implements raft low-level network transport.
+type RaftStreamLayer struct {
+	net.Listener
+}
+
+// NewRaftStreamLayer creates RaftStreamLayer.
+func NewRaftStreamLayer(listener net.Listener) *RaftStreamLayer {
+	return &RaftStreamLayer{
+		listener,
+	}
+}
+
+// Dial connects to the address on the named network.
+func (t *RaftStreamLayer) Dial(address raft.ServerAddress, timeout time.Duration) (net.Conn, error) {
+	dialer := &net.Dialer{Timeout: timeout}
+	return dialer.Dial("tcp", string(address))
+}
+
+// RaftLayer represents crond raft consensus layer.
+type RaftLayer struct {
 	bootstrap bool
 	underlay  *raft.Raft
 
@@ -29,8 +47,8 @@ type Layer struct {
 	transport     raft.Transport
 }
 
-// NewLayer creates crond raft Layer.
-func NewLayer(c *LayerConfig, listener net.Listener) *Layer {
+// NewRaftLayer creates crond RaftLayer.
+func NewRaftLayer(c *Config, listener net.Listener) *RaftLayer {
 	rc := raft.DefaultConfig()
 	rc.LogOutput = logs.GetRaftWriter()
 	rc.LocalID = raft.ServerID(c.RaftNode)
@@ -50,30 +68,30 @@ func NewLayer(c *LayerConfig, listener net.Listener) *Layer {
 	} else {
 		snapshotStore, err = raft.NewFileSnapshotStore(path.Join(c.RaftDataDir, "raft"), raftFileSnapshotStoreRetain, logs.GetRaftWriter())
 		if err != nil {
-			logs.Fatal("NewLayer failed to create snapshotStore: err=%v", err)
+			logs.Fatal("NewRaftLayer failed to create snapshotStore: err=%v", err)
 		}
 
 		boltStore, err := raftboltdb.NewBoltStore(path.Join(c.RaftDataDir, "raft", "raft.db"))
 		if err != nil {
-			logs.Fatal("NewLayer failed to create stable store: err=%v", err)
+			logs.Fatal("NewRaftLayer failed to create stable store: err=%v", err)
 		}
 
 		stableStore = boltStore
 
 		logStore, err = raft.NewLogCache(raftMaxLogCacheSize, boltStore)
 		if err != nil {
-			logs.Fatal("NewLayer failed to create log store: err=%v", err)
+			logs.Fatal("NewRaftLayer failed to create log store: err=%v", err)
 		}
 	}
-	transport := raft.NewNetworkTransport(NewStreamLayer(listener), raftNetworkTransportMaxPool,
+	transport := raft.NewNetworkTransport(NewRaftStreamLayer(listener), raftNetworkTransportMaxPool,
 		raftNetworkTransportTimeout, logs.GetRaftWriter())
 
 	underlay, err := raft.NewRaft(rc, nil, logStore, stableStore, snapshotStore, transport)
 	if err != nil {
-		logs.Fatal("NewLayer failed to create raft instance: err=%v", err)
+		logs.Fatal("NewRaftLayer failed to create raft instance: err=%v", err)
 	}
 
-	return &Layer{
+	return &RaftLayer{
 		bootstrap:     c.RaftBootstrap,
 		underlay:      underlay,
 		rc:            rc,
@@ -84,8 +102,8 @@ func NewLayer(c *LayerConfig, listener net.Listener) *Layer {
 	}
 }
 
-// Run starts raft.
-func (l *Layer) Run() {
+// Run starts raft layer.
+func (l *RaftLayer) Run() {
 	if l.bootstrap {
 		configuration := raft.Configuration{
 			Servers: []raft.Server{

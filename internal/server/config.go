@@ -1,4 +1,4 @@
-package raft
+package server
 
 import (
 	"os"
@@ -6,22 +6,24 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// LayerConfig stores all crond raft layer configurations.
-type LayerConfig struct {
+// Config stores all crond server configurations.
+type Config struct {
+	ServerPort     int    `mapstructure:"server-port"`
 	RaftProduction bool   `mapstructure:"raft-production"`
 	RaftNode       string `mapstructure:"raft-node"`
 	RaftBootstrap  bool   `mapstructure:"raft-bootstrap"`
 	RaftDataDir    string `mapstructure:"raft-data-dir"`
 }
 
-// DefaultLayerConfig creates the LayerConfig with sensible default settings.
-func DefaultLayerConfig() *LayerConfig {
+// DefaultConfig creates the Config with sensible default settings.
+func DefaultConfig() *Config {
 	name, err := os.Hostname()
 	if err != nil {
 		panic(err)
 	}
 
-	return &LayerConfig{
+	return &Config{
+		ServerPort:     5281,
 		RaftProduction: false,
 		RaftNode:       name,
 		RaftBootstrap:  false,
@@ -29,8 +31,9 @@ func DefaultLayerConfig() *LayerConfig {
 	}
 }
 
-// BindLayerFlags overwrites default raft layer configurations from CLI flags.
-func BindLayerFlags(c *LayerConfig, fs *pflag.FlagSet) {
+// BindFlags overwrites default crond server configurations from CLI flags.
+func BindFlags(c *Config, fs *pflag.FlagSet) {
+	fs.IntVar(&c.ServerPort, "server-port", c.ServerPort, "server server port")
 	fs.BoolVar(&c.RaftProduction, "raft-production", c.RaftProduction, "if true, raft layer runs in production mode")
 	fs.StringVar(&c.RaftNode, "raft-node", c.RaftNode, "raft layer node name")
 	fs.BoolVar(&c.RaftBootstrap, "raft-bootstrap", c.RaftBootstrap, "if true, raft layer will bootstrap cluster")

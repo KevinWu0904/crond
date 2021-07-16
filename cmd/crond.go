@@ -1,88 +1,64 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
-	"os/signal"
-	"strconv"
-	"syscall"
-	"time"
 
-	"github.com/KevinWu0904/crond/internal/crond/raft"
-
-	"github.com/KevinWu0904/crond/internal/config"
-	"github.com/KevinWu0904/crond/internal/crond"
-	"github.com/KevinWu0904/crond/pkg/flag"
+	"github.com/KevinWu0904/crond/internal/server"
 	"github.com/KevinWu0904/crond/pkg/logs"
-	"github.com/KevinWu0904/crond/pkg/term"
-	"github.com/KevinWu0904/crond/proto/types"
-	ginzap "github.com/gin-contrib/zap"
-	"github.com/gin-gonic/gin"
-	"github.com/soheilhy/cmux"
+	"github.com/spf13/pflag"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc"
 )
 
-var cfg = config.DefaultConfig()
-var cfgFile string
+var configFile string
+var config = DefaultConfig()
 
-// Command represents the crond CLI.
-var Command = &cobra.Command{
+// RootCommand represents crond CLI.
+var RootCommand = &cobra.Command{
 	Use:   "crond",
-	Short: "CronD is a Cloud Native golang distributed cron scheduling service.",
+	Short: "CronD is a Cloud Native golang distributed cron scheduling service",
 	Long: `CronD serves a distributed unified job dispatcher for offline periodic tasks. It is recommended running in 
-a cluster with 3 or 5 nodes, peer nodes communicates by Raft Consensus.`,
-	Run: Run,
+a cluster with 3 or 5 nodes, peer nodes communicates by Raft Consensus`,
 }
 
+// init retrieves crond configs from file/env/flag, priority is file > env > flag.
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	Command.PersistentFlags().StringVar(&cfgFile, "config", "", "crond config")
+	// Add crond sub commands.
+	RootCommand.AddCommand(ServerCommand)
 
-	nfs := flag.NewNamedFlagSets()
+	// Bind crond global config file.
+	RootCommand.PersistentFlags().StringVarP(&configFile, "config", "c", "", "server global config file")
 
-	// Bind custom named flag sets.
-	logs.BindLoggerFlags(cfg.Logger, nfs.NewFlatSet("logger"))
-	raft.BindLayerFlags(cfg.Raft, nfs.NewFlatSet("raft"))
-	crond.BindServerFlags(cfg.Server, nfs.NewFlatSet("server"))
+	// Bind crond extra flags to related commands.
+	bindRootFlags()
+	bindServerFlags()
+}
 
-	for _, fs := range nfs.FlagSets {
-		Command.Flags().AddFlagSet(fs)
-	}
-	viper.BindPFlags(Command.Flags())
+func bindRootFlags() {
+	fs := pflag.NewFlagSet("", pflag.ExitOnError)
+	logs.BindFlags(config.Logger, fs)
+	RootCommand.PersistentFlags().AddFlagSet(fs)
+}
 
-	// Custom crond CLI usage and help.
-	usageTpl := "Usage:\n  %s\n"
-	cols, _, _ := term.TerminalSize(Command.OutOrStdout())
-	Command.SetUsageFunc(func(cmd *cobra.Command) error {
-		fmt.Fprintf(cmd.OutOrStderr(), usageTpl, cmd.UseLine())
-		flag.PrintSections(cmd.OutOrStderr(), nfs, cols)
-		flag.PrintSection(cmd.OutOrStdout(), "global", cmd.PersistentFlags(), cols)
-		return nil
-	})
-
-	helpTpl := "Name:\n  %s\n\nDescription:\n  %s\n\n" + usageTpl
-	Command.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		fmt.Fprintf(cmd.OutOrStdout(), helpTpl, cmd.Short, cmd.Long, cmd.UseLine())
-		flag.PrintSections(cmd.OutOrStdout(), nfs, cols)
-		flag.PrintSection(cmd.OutOrStdout(), "global", cmd.PersistentFlags(), cols)
-	})
+func bindServerFlags() {
+	fs := pflag.NewFlagSet("", pflag.ExitOnError)
+	server.BindFlags(config.Server, fs)
+	ServerCommand.Flags().AddFlagSet(fs)
 }
 
 // initConfig reads configs from specific directories or environment variables.
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+	if configFile != "" {
+		viper.SetConfigFile(configFile)
 	} else {
-		viper.SetConfigName("crond-config")
+		viper.SetConfigName("server-config")
 		viper.SetConfigType("yaml")
-		viper.AddConfigPath("/etc/crond")
-		viper.AddConfigPath("$HOME/.crond")
+		viper.AddConfigPath("/etc/server")
+		viper.AddConfigPath("$HOME/.server")
 		viper.AddConfigPath(".")
 	}
 
@@ -95,67 +71,7 @@ func initConfig() {
 	}
 	fmt.Fprintf(os.Stdout, "initConfig succeed to load config file: file=%s\n", viper.ConfigFileUsed())
 
-	if err := viper.Unmarshal(cfg); err != nil {
+	if err := viper.Unmarshal(config); err != nil {
 		fmt.Fprintf(os.Stderr, "initConfig failed to unmarshal config file: err=%v", err)
 	}
-}
-
-// Run starts crond servers.
-func Run(cmd *cobra.Command, args []string) {
-	if err := logs.InitLogger(cfg.Logger); err != nil {
-		panic(err)
-	}
-	defer logs.Flush()
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	defer stop()
-
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(cfg.Server.ServerPort))
-	if err != nil {
-		panic(err)
-	}
-
-	logs.CtxInfo(ctx, "CronD start server ...: port=%d", cfg.Server.ServerPort)
-
-	mux := cmux.New(listener)
-
-	grpcListener := mux.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
-	httpListener := mux.Match(cmux.HTTP1Fast())
-	raftListener := mux.Match(cmux.Any())
-
-	grpcServer := grpc.NewServer()
-	crondGRPCServer := crond.NewGRPCServer()
-	types.RegisterCrondServer(grpcServer, crondGRPCServer)
-	logs.CtxInfo(ctx, "CronD start gRPC Server ...")
-	go grpcServer.Serve(grpcListener)
-
-	router := gin.Default()
-	gin.DefaultWriter = logs.GetGinWriter()
-	gin.DefaultErrorWriter = logs.GetGinErrorWriter()
-	router.Use(ginzap.Ginzap(logs.GetLogger(), "2006-01-02T15:04:05.000Z0700", false))
-	router.Use(ginzap.RecoveryWithZap(logs.GetLogger(), true))
-
-	httpServer := &http.Server{Handler: router}
-	crondHTTPServer := crond.NewHTTPServer()
-	crond.RegisterCrondHTTPServer(router, crondHTTPServer)
-	logs.CtxInfo(ctx, "CronD start HTTP Server ...")
-	go httpServer.Serve(httpListener)
-
-	raftLayer := raft.NewLayer(cfg.Raft, raftListener)
-	go raftLayer.Run()
-
-	logs.CtxInfo(ctx, "CronD servers starting ...")
-	go mux.Serve()
-
-	<-ctx.Done()
-	stop()
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-	defer cancel()
-
-	grpcServer.GracefulStop()
-	httpServer.Shutdown(ctx)
-	mux.Close()
-
-	logs.CtxInfo(ctx, "CronD stop gracefully")
 }
