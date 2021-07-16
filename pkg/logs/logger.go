@@ -37,7 +37,7 @@ var ErrInvalidLogLevel = errors.New("invalid log level")
 var ErrInvalidLogEncoder = errors.New("invalid log encoder")
 
 // InitLogger initializes global zap logger instance.
-func InitLogger(c *LoggerConfig) error {
+func InitLogger(c *Config) error {
 	level, ok := logLevelMapping[c.LogLevel]
 	if !ok {
 		return ErrInvalidLogLevel
@@ -54,7 +54,7 @@ func InitLogger(c *LoggerConfig) error {
 		return ErrInvalidLogEncoder
 	}
 
-	namedWS := func(c *LoggerConfig, name string) zapcore.WriteSyncer {
+	namedWS := func(c *Config, name string) zapcore.WriteSyncer {
 		var fullName string
 		if name == "" {
 			fullName = c.FileLogName + ".log"

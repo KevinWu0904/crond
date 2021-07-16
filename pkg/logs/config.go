@@ -2,8 +2,8 @@ package logs
 
 import "github.com/spf13/pflag"
 
-// LoggerConfig stores all crond logger configurations.
-type LoggerConfig struct {
+// Config stores logger configurations.
+type Config struct {
 	LogLevel         string `mapstructure:"log-level"`
 	LogEncoder       string `mapstructure:"log-encoder"`
 	EnableConsoleLog bool   `mapstructure:"enable-console-log"`
@@ -15,30 +15,30 @@ type LoggerConfig struct {
 	FileLogAge       int    `mapstructure:"file-log-age"`
 }
 
-// DefaultLoggerConfig creates the LoggerConfig with sensible default settings.
-func DefaultLoggerConfig() *LoggerConfig {
-	return &LoggerConfig{
+// DefaultConfig creates the Config with sensible default settings.
+func DefaultConfig() *Config {
+	return &Config{
 		LogLevel:         "info",
 		LogEncoder:       "console",
 		EnableConsoleLog: true,
 		EnableFileLog:    false,
 		FileLogDir:       "log",
-		FileLogName:      "crond",
+		FileLogName:      "server",
 		FileLogNum:       3,
 		FileLogSize:      500,
 		FileLogAge:       15,
 	}
 }
 
-// BindLoggerFlags overwrites default logger configurations from CLI flags.
-func BindLoggerFlags(c *LoggerConfig, fs *pflag.FlagSet) {
-	fs.StringVar(&c.LogLevel, "log-level", c.LogLevel, "crond log level, it can be one of "+
+// BindFlags overwrites default logger configurations from CLI flags.
+func BindFlags(c *Config, fs *pflag.FlagSet) {
+	fs.StringVar(&c.LogLevel, "log-level", c.LogLevel, "server log level, it can be one of "+
 		"(debug|info|warn|error|panic|fatal)")
-	fs.StringVar(&c.LogEncoder, "log-encoder", c.LogEncoder, "crond log encoder, it can be one of "+
+	fs.StringVar(&c.LogEncoder, "log-encoder", c.LogEncoder, "server log encoder, it can be one of "+
 		"(console|json)")
-	fs.BoolVar(&c.EnableConsoleLog, "enable-console-log", c.EnableConsoleLog, "if true, crond will log "+
+	fs.BoolVar(&c.EnableConsoleLog, "enable-console-log", c.EnableConsoleLog, "if true, server will log "+
 		"append standard console additionally")
-	fs.BoolVar(&c.EnableFileLog, "enable-file-log", c.EnableFileLog, "if true, crond will log append "+
+	fs.BoolVar(&c.EnableFileLog, "enable-file-log", c.EnableFileLog, "if true, server will log append "+
 		"specific file additionally")
 	fs.StringVar(&c.FileLogDir, "file-log-dir", c.FileLogDir, "when enable-file-log is true, this param "+
 		"indicates log file path")

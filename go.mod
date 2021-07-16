@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/raft-boltdb v0.0.0-20210422161416-485fa74b0b01
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
-	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
