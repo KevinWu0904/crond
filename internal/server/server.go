@@ -73,22 +73,22 @@ func NewServer(c *Config) (*Server, error) {
 }
 
 // Run launches crond server.
-func (s *Server) Run(ctx context.Context) {
+func (s *Server) Run() {
 	go s.grpcServer.Serve(s.grpcListener)
 	go s.httpServer.Serve(s.httpListener)
 	go s.raftLayer.Run()
 
-	logs.CtxInfo(ctx, "CronD starting...: port=%d", s.c.ServerPort)
+	logs.Info("CronD server starting...: port=%d", s.c.ServerPort)
 	s.mux.Serve()
 }
 
 // GracefulShutdown stops crond server gracefully.
-func (s *Server) GracefulShutdown(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+func (s *Server) GracefulShutdown() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	s.grpcServer.GracefulStop()
 	s.httpServer.Shutdown(ctx)
 
-	logs.CtxInfo(ctx, "CronD shutdown gracefully")
+	logs.Info("CronD server shutdown gracefully")
 }
