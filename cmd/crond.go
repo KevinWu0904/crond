@@ -55,11 +55,11 @@ func initConfig() {
 	if configFile != "" {
 		viper.SetConfigFile(configFile)
 	} else {
-		viper.SetConfigName("server-config")
+		viper.SetConfigName("crond-config")
 		viper.SetConfigType("yaml")
-		viper.AddConfigPath("/etc/server")
-		viper.AddConfigPath("$HOME/.server")
 		viper.AddConfigPath(".")
+		viper.AddConfigPath("$HOME/.crond")
+		viper.AddConfigPath("/etc/crond")
 	}
 
 	viper.SetEnvPrefix("crond")
