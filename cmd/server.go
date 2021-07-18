@@ -33,9 +33,9 @@ func RunServer(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	go cs.Run(ctx)
+	go cs.Run()
 
 	<-ctx.Done()
 
-	cs.GracefulShutdown(ctx)
+	cs.GracefulShutdown()
 }
