@@ -58,8 +58,8 @@ func initConfig() {
 		viper.SetConfigName("crond-config")
 		viper.SetConfigType("yaml")
 		viper.AddConfigPath(".")
-		viper.AddConfigPath("/etc/crond")
 		viper.AddConfigPath("$HOME/.crond")
+		viper.AddConfigPath("/etc/crond")
 	}
 
 	viper.SetEnvPrefix("crond")
