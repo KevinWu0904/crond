@@ -58,7 +58,7 @@ func NewRaftLayer(c *Config, listener net.Listener) *RaftLayer {
 	var snapshotStore raft.SnapshotStore
 	var stableStore raft.StableStore
 	var logStore raft.LogStore
-	var jobStore CrondStorage
+	var crondStore CrondStore
 
 	if !c.RaftProduction {
 		snapshotStore = raft.NewInmemSnapshotStore()
@@ -66,7 +66,7 @@ func NewRaftLayer(c *Config, listener net.Listener) *RaftLayer {
 		memStore := raft.NewInmemStore()
 		stableStore = memStore
 		logStore = memStore
-		jobStore = NewCrondInmemStore()
+		crondStore = NewCrondInmemStore()
 	} else {
 		snapshotStore, err = raft.NewFileSnapshotStore(path.Join(c.RaftDataDir, "raft"), raftFileSnapshotStoreRetain, logs.GetRaftWriter())
 		if err != nil {
@@ -75,23 +75,23 @@ func NewRaftLayer(c *Config, listener net.Listener) *RaftLayer {
 
 		boltStore, err := raftboltdb.NewBoltStore(path.Join(c.RaftDataDir, "raft", "raft.db"))
 		if err != nil {
-			logs.Fatal("NewRaftLayer failed to create stable store: err=%v", err)
+			logs.Fatal("NewRaftLayer failed to create stable crondStore: err=%v", err)
 		}
 
 		stableStore = boltStore
 
 		logStore, err = raft.NewLogCache(raftMaxLogCacheSize, boltStore)
 		if err != nil {
-			logs.Fatal("NewRaftLayer failed to create log store: err=%v", err)
+			logs.Fatal("NewRaftLayer failed to create log crondStore: err=%v", err)
 		}
-		jobStore, err = NewCrondBoltStore(path.Join(c.RaftDataDir, "raft", "job.db"))
+		crondStore, err = NewCrondBoltStore(path.Join(c.RaftDataDir, "raft", "job.db"))
 		if err != nil {
-			logs.Fatal("NewCrondBoltStore failed to create job store: err=%v", err)
+			logs.Fatal("NewCrondBoltStore failed to create job crondStore: err=%v", err)
 		}
 	}
 	transport := raft.NewNetworkTransport(NewRaftStreamLayer(listener), raftNetworkTransportMaxPool,
 		raftNetworkTransportTimeout, logs.GetRaftWriter())
-	fsm := NewJobFSM(jobStore)
+	fsm := NewJobFSM(crondStore)
 	underlay, err := raft.NewRaft(rc, fsm, logStore, stableStore, snapshotStore, transport)
 	if err != nil {
 		logs.Fatal("NewRaftLayer failed to create raft instance: err=%v", err)

@@ -20,9 +20,9 @@ var (
 	ErrKeyNotFound = errors.New("not found")
 )
 
-// CrondStorage is used to provide an interface for storing
+// CrondStore is used to provide an interface for storing
 // and retrieving jobs in a durable fashion.
-type CrondStorage interface {
+type CrondStore interface {
 	// SetJob creates or updates a job.
 	SetJob(job *Job) error
 
@@ -36,14 +36,14 @@ type CrondStorage interface {
 	GetJobs() ([]*Job, error)
 }
 
-// CrondBoltStore provides access to BoltDB for Crond to store and retrieve
-// job entries. It also provides key/value storage, and can be used as a CrondStorage .
+// CrondBoltStore provides access to BoltDB for Crond to crondStore and retrieve
+// job entries. It also provides key/value storage, and can be used as a CrondStore .
 type CrondBoltStore struct {
 	conn *bolt.DB
 	path string
 }
 
-// NewCrondBoltStore takes a file path and returns a connected bolt store.
+// NewCrondBoltStore takes a file path and returns a connected bolt crondStore.
 func NewCrondBoltStore(path string) (*CrondBoltStore, error) {
 	handle, err := bolt.Open(path, dbFileMode, nil)
 	if err != nil {
@@ -126,7 +126,7 @@ func (s *CrondBoltStore) GetJobs() ([]*Job, error) {
 	return jobs, nil
 }
 
-// CrondInmemStore implements the CrondStorage interface.
+// CrondInmemStore implements the CrondStore interface.
 // It should NOT EVER be used for production. It is used only for
 // unit tests. Use the MDBStore implementation instead.
 type CrondInmemStore struct {
