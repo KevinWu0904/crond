@@ -6,8 +6,9 @@ option go_package = "github.com/KevinWu0904/crond/proto/types";
 
 message Job {
   string job_id = 1;
-  string job_name = 2;
-  string cron_expression = 3;
+  string job_key = 2;
+  string job_display_name = 3;
+  string cron_expression = 4;
 }
 
 message SetJobRequest {
