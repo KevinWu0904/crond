@@ -20,9 +20,9 @@ var (
 	ErrKeyNotFound = errors.New("not found")
 )
 
-// Storage is used to provide an interface for storing
+// CrondStorage is used to provide an interface for storing
 // and retrieving jobs in a durable fashion.
-type Storage interface {
+type CrondStorage interface {
 	// SetJob creates or updates a job.
 	SetJob(job *Job) error
 
@@ -36,27 +36,27 @@ type Storage interface {
 	GetJobs() ([]*Job, error)
 }
 
-// JobBoltStore provides access to BoltDB for Crond to store and retrieve
-// job entries. It also provides key/value storage, and can be used as a Storage .
-type JobBoltStore struct {
+// CrondBoltStore provides access to BoltDB for Crond to store and retrieve
+// job entries. It also provides key/value storage, and can be used as a CrondStorage .
+type CrondBoltStore struct {
 	conn *bolt.DB
 	path string
 }
 
-// NewJobBoltStore takes a file path and returns a connected bolt store.
-func NewJobBoltStore(path string) (*JobBoltStore, error) {
+// NewCrondBoltStore takes a file path and returns a connected bolt store.
+func NewCrondBoltStore(path string) (*CrondBoltStore, error) {
 	handle, err := bolt.Open(path, dbFileMode, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &JobBoltStore{
+	return &CrondBoltStore{
 		conn: handle,
 		path: path,
 	}, nil
 }
 
 // SetJob creates or updates a job on bolt db.
-func (s *JobBoltStore) SetJob(job *Job) error {
+func (s *CrondBoltStore) SetJob(job *Job) error {
 	tx, err := s.conn.Begin(true)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (s *JobBoltStore) SetJob(job *Job) error {
 }
 
 // DeleteJob deletes a job by key on bolt db.
-func (s *JobBoltStore) DeleteJob(key string) error {
+func (s *CrondBoltStore) DeleteJob(key string) error {
 	tx, err := s.conn.Begin(true)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (s *JobBoltStore) DeleteJob(key string) error {
 }
 
 // GetJobByKey returns the value for key, or an empty job if key was not found on bold db.
-func (s *JobBoltStore) GetJobByKey(key string) (*Job, error) {
+func (s *CrondBoltStore) GetJobByKey(key string) (*Job, error) {
 	tx, err := s.conn.Begin(false)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (s *JobBoltStore) GetJobByKey(key string) (*Job, error) {
 }
 
 // GetJobs returns all jobs on bolt db.
-func (s *JobBoltStore) GetJobs() ([]*Job, error) {
+func (s *CrondBoltStore) GetJobs() ([]*Job, error) {
 	tx, err := s.conn.Begin(false)
 	if err != nil {
 		return nil, err
@@ -126,23 +126,23 @@ func (s *JobBoltStore) GetJobs() ([]*Job, error) {
 	return jobs, nil
 }
 
-// JobInmemStore implements the Storage interface.
+// CrondInmemStore implements the CrondStorage interface.
 // It should NOT EVER be used for production. It is used only for
 // unit tests. Use the MDBStore implementation instead.
-type JobInmemStore struct {
+type CrondInmemStore struct {
 	mu     sync.RWMutex
 	jobMap map[string]*Job
 }
 
-// NewJobInmemStore returns a mem job storage
-func NewJobInmemStore() *JobInmemStore {
-	return &JobInmemStore{
+// NewCrondInmemStore returns a mem job storage
+func NewCrondInmemStore() *CrondInmemStore {
+	return &CrondInmemStore{
 		jobMap: make(map[string]*Job),
 	}
 }
 
 // SetJob creates or updates a job in mem.
-func (s *JobInmemStore) SetJob(job *Job) error {
+func (s *CrondInmemStore) SetJob(job *Job) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.jobMap[job.JobKey] = job
@@ -150,7 +150,7 @@ func (s *JobInmemStore) SetJob(job *Job) error {
 }
 
 // DeleteJob deletes a job by key in mem.
-func (s *JobInmemStore) DeleteJob(key string) error {
+func (s *CrondInmemStore) DeleteJob(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.jobMap, key)
@@ -158,7 +158,7 @@ func (s *JobInmemStore) DeleteJob(key string) error {
 }
 
 // GetJobByKey returns the value for key, or an empty job if key was not found in mem.
-func (s *JobInmemStore) GetJobByKey(key string) (*Job, error) {
+func (s *CrondInmemStore) GetJobByKey(key string) (*Job, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if job, ok := s.jobMap[key]; ok {
@@ -168,7 +168,7 @@ func (s *JobInmemStore) GetJobByKey(key string) (*Job, error) {
 }
 
 // GetJobs returns all jobs in mem.
-func (s *JobInmemStore) GetJobs() ([]*Job, error) {
+func (s *CrondInmemStore) GetJobs() ([]*Job, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	jobs := make([]*Job, len(s.jobMap))

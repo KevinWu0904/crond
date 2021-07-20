@@ -8,11 +8,11 @@ import (
 // JobFSM can be used as a Raft.FSM that can be implemented by
 // clients to make use of the replicated log.
 type JobFSM struct {
-	store Storage
+	store CrondStorage
 }
 
 // NewJobFSM constructs a JobFSM with store as job storage
-func NewJobFSM(store Storage) JobFSM {
+func NewJobFSM(store CrondStorage) JobFSM {
 	return JobFSM{
 		store: store,
 	}
