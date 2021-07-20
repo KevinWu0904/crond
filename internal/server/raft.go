@@ -58,6 +58,7 @@ func NewRaftLayer(c *Config, listener net.Listener) *RaftLayer {
 	var snapshotStore raft.SnapshotStore
 	var stableStore raft.StableStore
 	var logStore raft.LogStore
+	var jobStore Storage
 
 	if !c.RaftProduction {
 		snapshotStore = raft.NewInmemSnapshotStore()
@@ -65,6 +66,7 @@ func NewRaftLayer(c *Config, listener net.Listener) *RaftLayer {
 		memStore := raft.NewInmemStore()
 		stableStore = memStore
 		logStore = memStore
+		jobStore = NewJobInmemStore()
 	} else {
 		snapshotStore, err = raft.NewFileSnapshotStore(path.Join(c.RaftDataDir, "raft"), raftFileSnapshotStoreRetain, logs.GetRaftWriter())
 		if err != nil {
@@ -82,11 +84,15 @@ func NewRaftLayer(c *Config, listener net.Listener) *RaftLayer {
 		if err != nil {
 			logs.Fatal("NewRaftLayer failed to create log store: err=%v", err)
 		}
+		jobStore, err = NewJobBoltStore(path.Join(c.RaftDataDir, "raft", "job.db"))
+		if err != nil {
+			logs.Fatal("NewJobBoltStore failed to create job store: err=%v", err)
+		}
 	}
 	transport := raft.NewNetworkTransport(NewRaftStreamLayer(listener), raftNetworkTransportMaxPool,
 		raftNetworkTransportTimeout, logs.GetRaftWriter())
-
-	underlay, err := raft.NewRaft(rc, nil, logStore, stableStore, snapshotStore, transport)
+	fsm := NewJobFSM(jobStore)
+	underlay, err := raft.NewRaft(rc, fsm, logStore, stableStore, snapshotStore, transport)
 	if err != nil {
 		logs.Fatal("NewRaftLayer failed to create raft instance: err=%v", err)
 	}

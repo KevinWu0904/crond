@@ -2,11 +2,11 @@ package server
 
 // Job represents crond Job entity in memory.
 type Job struct {
-	JobID          string
-	JobKey         string
-	JobDisplayName string
-	CronExpression string
-	ExecutorType   ExecutorType
+	JobID          string       `json:"job_id"`
+	JobKey         string       `json:"job_key"`
+	JobDisplayName string       `json:"job_display_name"`
+	CronExpression string       `json:"cron_expression"`
+	ExecutorType   ExecutorType `json:"executor_type"`
 }
 
 // ExecutorType defines multiple executor types, different type will be running by different executors.
