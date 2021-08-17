@@ -1,8 +1,9 @@
 package server
 
 import (
-	"github.com/hashicorp/raft"
 	"io"
+
+	"github.com/hashicorp/raft"
 )
 
 // JobFSM can be used as a Raft.FSM that can be implemented by

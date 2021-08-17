@@ -2,8 +2,9 @@ package server
 
 import (
 	"errors"
-	"github.com/boltdb/bolt"
 	"sync"
+
+	"github.com/boltdb/bolt"
 )
 
 const (
@@ -16,7 +17,7 @@ var (
 	// Bucket names we perform transactions in
 	dbJobs = []byte("jobs")
 
-	// An error indicating a given key does not exist
+	// ErrKeyNotFound is An error indicating a given key does not exist
 	ErrKeyNotFound = errors.New("not found")
 )
 
